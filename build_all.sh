@@ -54,6 +54,7 @@ compile_display "ST7793"    "8BIT"
 # 480x320 color displays
 compile_display "ILI9481"   "8BIT"
 compile_display "ILI9486"   "8BIT"
+compile_display "HX8357"    "8BIT"
 compile_display "R61581"    "8BIT"
 
 make clean
