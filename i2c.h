@@ -7,7 +7,7 @@ extern "C" {
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <stm32f103xb.h>
+#include <stm32f103xe.h>
 #include <stm32f1xx_ll_bus.h>
 
 #define I2C_NOACK       0

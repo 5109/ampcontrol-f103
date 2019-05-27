@@ -14,7 +14,7 @@ lc = $(shell echo $1 | tr '[:upper:]' '[:lower:]')
 
 TARGET = $(call lc, $(PROJECT)_$(DISPLAY)_$(DISPVAR))
 
-C_DEFS = -DUSE_FULL_LL_DRIVER -DSTM32F103xB
+C_DEFS = -DUSE_FULL_LL_DRIVER -DSTM32F103xE
 
 ifeq "$(DEBUG_ENABLED)" "YES"
   C_DEFS += -D_DEBUG_ENABLED
@@ -179,7 +179,7 @@ C_INCLUDES += \
 AS_DEFS +=
 
 ASM_SOURCES += \
-  system/startup_stm32f103xb.s
+  system/startup_stm32f103xe.s
 
 # Build directory
 BUILD_DIR = build
