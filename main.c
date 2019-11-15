@@ -119,5 +119,10 @@ int main(void)
         dbg(utilMkStr("FPS: %d", fpsCnt));
         fpsCnt = cnt;
 #endif
+        DMAData *dmaData = spGetDmaData();
+
+        dbg(utilMkStr("%6d, %6d, %6d, %6d, %6d, %6d",
+                      dmaData->sp[0], dmaData->sp[1],
+                      dmaData->btn, dmaData->pot[0], dmaData->pot[1], dmaData->pot[2]));
     }
 }

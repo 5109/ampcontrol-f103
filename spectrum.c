@@ -15,13 +15,8 @@ static struct {
     int16_t raw[FFT_SIZE];
 } fftData[SP_CHAN_END];
 
-typedef struct {
-    int16_t sp[SP_CHAN_END];
-    int16_t btn;
-    int16_t pot[3];
-} DMAData;
-
 static DMAData dmaData;
+static DMAData dmaDataReady;
 
 static const uint16_t dbTable[N_DB] = {
     256,   262,   267,   273,   279,   285,   292,   298,
@@ -86,9 +81,16 @@ static void spInitDMA(void)
                            LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
 
     // Set DMA transfer size
+#ifdef _STM32F1
     LL_DMA_SetDataLength(DMA1,
                          LL_DMA_CHANNEL_1,
                          DMA_CHAN_MAX);
+#endif
+#ifdef _STM32F3
+    LL_DMA_SetDataLength(DMA1,
+                         LL_DMA_CHANNEL_1,
+                         SP_CHAN_END);
+#endif
 
     // Enable the DMA transfer
     LL_DMA_EnableChannel(DMA1,
@@ -118,11 +120,19 @@ static void spInitADC(void)
 #endif
 
     // Configure GPIO in analog mode to be used as ADC input
+    // Spectrum
     LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_0, LL_GPIO_MODE_ANALOG);
     LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_1, LL_GPIO_MODE_ANALOG);
 #ifdef _STM32F3
     LL_GPIO_SetPinPull(GPIOA, LL_GPIO_PIN_0, LL_GPIO_PULL_NO);
     LL_GPIO_SetPinPull(GPIOA, LL_GPIO_PIN_1, LL_GPIO_PULL_NO);
+#endif
+    // ADC buttons and potentiometers
+#ifdef _STM32F1
+    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_4, LL_GPIO_MODE_ANALOG);
+    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_5, LL_GPIO_MODE_ANALOG);
+    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_6, LL_GPIO_MODE_ANALOG);
+    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_7, LL_GPIO_MODE_ANALOG);
 #endif
 
     if (!LL_ADC_IsEnabled(ADC1)) {
@@ -143,26 +153,41 @@ static void spInitADC(void)
         // Set ADC group regular conversion data transfer
         LL_ADC_REG_SetDMATransfer(ADC1, LL_ADC_REG_DMA_TRANSFER_UNLIMITED);
 
+#ifdef _STM32F1
+        // Set ADC group regular sequencer length and scan direction
+        LL_ADC_REG_SetSequencerLength(ADC1, LL_ADC_REG_SEQ_SCAN_ENABLE_6RANKS);
+
+        LL_ADC_REG_SetSequencerRanks(ADC1, LL_ADC_REG_RANK_1, LL_ADC_CHANNEL_0);
+        LL_ADC_SetChannelSamplingTime(ADC1, LL_ADC_CHANNEL_0, LL_ADC_SAMPLINGTIME_1CYCLE_5);
+
+        LL_ADC_REG_SetSequencerRanks(ADC1, LL_ADC_REG_RANK_2, LL_ADC_CHANNEL_1);
+        LL_ADC_SetChannelSamplingTime(ADC1, LL_ADC_CHANNEL_1, LL_ADC_SAMPLINGTIME_1CYCLE_5);
+
+        LL_ADC_REG_SetSequencerRanks(ADC1, LL_ADC_REG_RANK_3, LL_ADC_CHANNEL_4);
+        LL_ADC_SetChannelSamplingTime(ADC1, LL_ADC_CHANNEL_4, LL_ADC_SAMPLINGTIME_1CYCLE_5);
+
+        LL_ADC_REG_SetSequencerRanks(ADC1, LL_ADC_REG_RANK_4, LL_ADC_CHANNEL_5);
+        LL_ADC_SetChannelSamplingTime(ADC1, LL_ADC_CHANNEL_5, LL_ADC_SAMPLINGTIME_1CYCLE_5);
+
+        LL_ADC_REG_SetSequencerRanks(ADC1, LL_ADC_REG_RANK_5, LL_ADC_CHANNEL_6);
+        LL_ADC_SetChannelSamplingTime(ADC1, LL_ADC_CHANNEL_6, LL_ADC_SAMPLINGTIME_1CYCLE_5);
+
+        LL_ADC_REG_SetSequencerRanks(ADC1, LL_ADC_REG_RANK_6, LL_ADC_CHANNEL_7);
+        LL_ADC_SetChannelSamplingTime(ADC1, LL_ADC_CHANNEL_7, LL_ADC_SAMPLINGTIME_1CYCLE_5);
+#endif
+#ifdef _STM32F3
         // Set ADC group regular sequencer length and scan direction
         LL_ADC_REG_SetSequencerLength(ADC1, LL_ADC_REG_SEQ_SCAN_ENABLE_2RANKS);
 
-#ifdef _STM32F1
-        LL_ADC_REG_SetSequencerRanks(ADC1, LL_ADC_REG_RANK_1, LL_ADC_CHANNEL_0);
-        LL_ADC_SetChannelSamplingTime(ADC1, LL_ADC_CHANNEL_0, LL_ADC_SAMPLINGTIME_71CYCLES_5);
-
-        LL_ADC_REG_SetSequencerRanks(ADC1, LL_ADC_REG_RANK_2, LL_ADC_CHANNEL_1);
-        LL_ADC_SetChannelSamplingTime(ADC1, LL_ADC_CHANNEL_1, LL_ADC_SAMPLINGTIME_71CYCLES_5);
-#endif
-#ifdef _STM32F3
         LL_ADC_REG_SetOverrun(ADC1, LL_ADC_REG_OVR_DATA_OVERWRITTEN);
 
         LL_ADC_REG_SetSequencerRanks(ADC1, LL_ADC_REG_RANK_1, LL_ADC_CHANNEL_1);
-        LL_ADC_SetChannelSamplingTime(ADC1, LL_ADC_CHANNEL_1, LL_ADC_SAMPLINGTIME_61CYCLES_5);
+        LL_ADC_SetChannelSamplingTime(ADC1, LL_ADC_CHANNEL_1, LL_ADC_SAMPLINGTIME_1CYCLE_5);
 //        LL_ADC_SetChannelSingleDiff(ADC1, LL_ADC_CHANNEL_1, LL_ADC_SINGLE_ENDED); // bug in the function
         ADC1->DIFSEL &= ~ADC_DIFSEL_DIFSEL_1;
 
         LL_ADC_REG_SetSequencerRanks(ADC1, LL_ADC_REG_RANK_2, LL_ADC_CHANNEL_2);
-        LL_ADC_SetChannelSamplingTime(ADC1, LL_ADC_CHANNEL_2, LL_ADC_SAMPLINGTIME_61CYCLES_5);
+        LL_ADC_SetChannelSamplingTime(ADC1, LL_ADC_CHANNEL_2, LL_ADC_SAMPLINGTIME_1CYCLE_5);
 //        LL_ADC_SetChannelSingleDiff(ADC1, LL_ADC_CHANNEL_2, LL_ADC_SINGLE_ENDED); // bug in the function
         ADC1->DIFSEL &= ~ADC_DIFSEL_DIFSEL_2;
 #endif
@@ -307,6 +332,8 @@ void spConvertADC(void)
 {
     static int16_t sIdx;
 
+    memcpy(&dmaDataReady, &dmaData, sizeof (dmaDataReady));
+
     if (++sIdx >= FFT_SIZE) {
         sIdx = 0;
     }
@@ -323,4 +350,9 @@ void spConvertADC(void)
         LL_ADC_REG_StartConversion(ADC1);
 #endif
     }
+}
+
+DMAData *spGetDmaData(void)
+{
+    return &dmaDataReady;
 }

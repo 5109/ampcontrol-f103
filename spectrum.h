@@ -25,7 +25,7 @@ enum {
     DMA_CHAN_POT_1,
     DMA_CHAN_POT_2,
 
-    DMA_CHAN_MAX = 2
+    DMA_CHAN_MAX
 };
 
 typedef uint8_t SpMode;
@@ -40,6 +40,12 @@ enum {
 #define SPECTRUM_SIZE   128
 #define N_HANN          1024
 #define N_DB            256
+
+typedef struct {
+    int16_t sp[SP_CHAN_END];
+    int16_t btn;
+    int16_t pot[3];
+} DMAData;
 
 typedef struct {
     uint8_t raw[SPECTRUM_SIZE];
@@ -62,6 +68,8 @@ Spectrum *spGet(void);
 void spGetADC(Spectrum *sp);
 
 void spConvertADC(void);
+
+DMAData *spGetDmaData(void);
 
 #ifdef __cplusplus
 }
