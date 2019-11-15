@@ -17,6 +17,17 @@ enum {
     SP_CHAN_END = SP_CHAN_BOTH
 };
 
+typedef uint8_t DmaChan;
+enum {
+    DMA_CHAN_BTN = SP_CHAN_END,
+
+    DMA_CHAN_POT_0,
+    DMA_CHAN_POT_1,
+    DMA_CHAN_POT_2,
+
+    DMA_CHAN_MAX = 2
+};
+
 typedef uint8_t SpMode;
 enum {
     SP_MODE_STEREO = 0,

@@ -9,20 +9,19 @@
 #include "settings.h"
 #include "utils.h"
 
-#define DMA_BUF_SIZE        (FFT_SIZE * SP_CHAN_END)
-
 static Spectrum spectrum;
 
+static struct {
+    int16_t raw[FFT_SIZE];
+} fftData[SP_CHAN_END];
+
 typedef struct {
-    int16_t chan[SP_CHAN_END];
-} SpDataSet;
+    int16_t sp[SP_CHAN_END];
+    int16_t btn;
+    int16_t pot[3];
+} DMAData;
 
-typedef union {
-    SpDataSet dataSet[FFT_SIZE];
-    int16_t bufDMA[DMA_BUF_SIZE];
-} SpDMAData;
-
-static SpDMAData dmaData;
+static DMAData dmaData;
 
 static const uint16_t dbTable[N_DB] = {
     256,   262,   267,   273,   279,   285,   292,   298,
@@ -89,7 +88,7 @@ static void spInitDMA(void)
     // Set DMA transfer size
     LL_DMA_SetDataLength(DMA1,
                          LL_DMA_CHANNEL_1,
-                         DMA_BUF_SIZE);
+                         DMA_CHAN_MAX);
 
     // Enable the DMA transfer
     LL_DMA_EnableChannel(DMA1,
@@ -247,7 +246,7 @@ static void spGetData(int16_t *dma, SpData *chan)
     FftSample *sp = mem_malloc(sizeof (FftSample) * FFT_SIZE);
 
     for (int16_t i = 0; i < FFT_SIZE; i++) {
-        sp[i].fr = dma[2 * i];
+        sp[i].fr = dma[i];
         dcOft += sp[i].fr;
     }
     dcOft /= FFT_SIZE;
@@ -300,13 +299,23 @@ Spectrum *spGet(void)
 void spGetADC(Spectrum *sp)
 {
     for (SpChan chan = SP_CHAN_LEFT; chan < SP_CHAN_BOTH; chan++) {
-        spGetData(&dmaData.dataSet->chan[chan], &sp->data[chan]);
+        spGetData(fftData[chan].raw, &sp->data[chan]);
     }
 }
 
 void spConvertADC(void)
 {
-    if (LL_ADC_IsEnabled(ADC1) == 1) {
+    static int16_t sIdx;
+
+    if (++sIdx >= FFT_SIZE) {
+        sIdx = 0;
+    }
+
+    for (SpChan chan = SP_CHAN_LEFT; chan < SP_CHAN_BOTH; chan++) {
+        fftData[chan].raw[sIdx] = dmaData.sp[chan];
+    }
+
+    if (LL_ADC_IsEnabled(ADC1)) {
 #ifdef _STM32F1
         LL_ADC_REG_StartConversionSWStart(ADC1);
 #endif
